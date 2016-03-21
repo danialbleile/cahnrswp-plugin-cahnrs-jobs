@@ -1,0 +1,92 @@
+/* CSS Document */
+.cahnrs-job-list > .cahnrs-jobs-nav {
+	margin: 0 -0.5%;
+	list-style-type: none;
+	padding: 0;
+	overflow: auto;
+}
+
+.cahnrs-job-list > .cahnrs-jobs-nav li {
+	display: block;
+	width: 32.33%;
+	margin: 0 0.5%;
+	float:left;
+}
+
+.cahnrs-job-list > .cahnrs-jobs-nav li.active:after {
+	content: '';
+	margin: auto;
+	width: 0; 
+	height: 0; 
+	border-left: 30px solid transparent;
+	border-right: 30px solid transparent;
+	border-top: 30px solid #981e32;
+	display: block;
+}
+
+.cahnrs-job-list > .cahnrs-jobs-nav li a {
+	display: block;
+	position: relative;
+}
+
+.cahnrs-job-list > .cahnrs-jobs-nav img {
+	display: block;
+	width: 100%;
+}
+
+.cahnrs-job-list > .cahnrs-jobs-nav span {
+	display: block;
+	width: 100%;
+	height: 40px;
+	line-height: 40px;
+	background-color: #b5b8bd;
+	color: #fff;
+	text-align: center;
+	position: absolute;
+	bottom:0;
+	font-size: 1.1rem;
+	text-transform: uppercase;
+}
+
+.cahnrs-job-list > .cahnrs-jobs-nav li.active span {
+	background-color: #981e32;
+}
+
+.cahnrs-job-list .cahnrs-jobs-feed {
+	list-style-type: none;
+	margin: 0;
+	padding: 0;
+	display: none;
+}
+
+.cahnrs-job-list .cahnrs-jobs-feed.active {
+	display: block;
+}
+
+.cahnrs-job-list .cahnrs-job {
+	font-size: 0.85rem;
+	padding: 1rem 0;
+	border-bottom: 1px solid #777;
+	color: #777;
+}
+
+.cahnrs-job-list .cahnrs-job h3 {
+	font-size: 1rem;
+	margin: 0;
+	padding: 0 0 0.75rem;
+}
+
+.cahnrs-job-list .cahnrs-job h4 {
+	font-size: 0.9rem;
+	margin: 0;
+	padding: 0 0 0.75rem;
+	font-weight: normal;
+	color: #777;
+	text-transform: uppercase;
+}
+
+.cahnrs-job-list .cahnrs-job a.cahnrs-job-details {
+	display: block;
+	padding: 1rem 0 0;
+}
+
