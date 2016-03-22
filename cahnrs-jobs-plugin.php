@@ -53,21 +53,25 @@ class CAHNRS_Jobs {
 		// Add admin scripts
 		add_action( 'wp_enqueue_scripts', array( $this, 'add_scripts' ) );
 		
-		if ( ! empty( $_GET['clear-jobs-cache'] ) ){
+		if ( ! empty( $_GET['update-jobs-cache'] ) ){
 			
 			add_filter( 'template_include', array( $this , 'clear_cache' ) , 99 );
 			
 		} // end if
+		
+		add_action( 'init', array( $this , 'add_taxonomy' ), 20 );
 		
 	} // end set_actions
 	
 	
 	public function do_jobs_shortcode( $atts ){
 		
-		require_once 'classes/class-cwp-jobs-feed.php';
+		
+		
+		/*require_once 'classes/class-cwp-jobs-feed.php';
 		$cwp_feed = new CWP_Jobs_Feed( $atts );
 		
-		$feed = $cwp_feed->get_feed();
+		$feed = $cwp_feed->get_feed();*/
 		
 		require_once 'classes/class-cwp-jobs-display.php';
 		$display = new CWP_Jobs_Display( $atts );
@@ -146,6 +150,43 @@ class CAHNRS_Jobs {
 		}// end if
 		
 	} // end get_jobs*/
+	
+	public function add_taxonomy(){
+		
+		register_taxonomy(
+        'jobarea',
+        'job',
+			array(
+				'label' => __( 'CAHNRS Areas' ),
+				'public' => true,
+				'show_ui' => true,
+				'hierarchical' => true,
+			)
+		);
+		
+		register_taxonomy(
+        'jobdept',
+        'job',
+			array(
+				'label' => __( 'Job Depts' ),
+				'public' => true,
+				'show_ui' => true,
+				'hierarchical' => true,
+			)
+		);
+		
+		register_taxonomy(  
+        'jobtype',
+        'job',
+			array(
+				'label' => __( 'Job Type' ),
+				'public' => true,
+				'show_ui' => true,
+				'hierarchical' => true,
+			)
+		);  
+		
+	}
 	
 	
 } // end class

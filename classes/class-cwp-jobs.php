@@ -18,7 +18,10 @@ class CWP_Jobs extends CWP_Post_Type {
 	// @var array $meta_fields Meta data for the post type
 	protected $fields = array(
 		'_redirect' => array('text',''),
-		'_dept' => array('text',''),
+		'_dept'     => array('text',''),
+		'_area'     => array('text',''),
+		'_type'     => array('text',''),
+		'_location' => array('text',''),
 	);
 	
 	// @var bool $do_save Add save action
@@ -60,7 +63,13 @@ class CWP_Jobs extends CWP_Post_Type {
 		
 		$html .= '<input type="text" name="_dept" value="' . $settings['_dept'] . '" placeholder="Department" />';
 		
-		$html .= '<p><a href="http://devsite.wpdev.cahnrs.wsu.edu/jobs/?update-jobs-cache=1">Update Jobs Cache</a></p>';
+		$html .= '<input type="text" name="_area" value="' . $settings['_area'] . '" placeholder="Area" />';
+		
+		$html .= '<input type="text" name="_type" value="' . $settings['_type'] . '" placeholder="Type" />';
+		
+		$html .= '<input type="text" name="_location" value="' . $settings['_location'] . '" placeholder="Location" />';
+		
+		$html .= '<p><a href="' . get_site_url() . '/?update-jobs-cache=1">Update Jobs Cache</a></p>';
 		
 		return $html;
 		
@@ -69,6 +78,35 @@ class CWP_Jobs extends CWP_Post_Type {
 	
 	public function do_jobs_request(){
 		
+		//$xml = file_get_contents( plugins_url( 'xml.php' , dirname(__FILE__) ) );
+		
+		$xml = file_get_contents('https://www.wsujobs.com/all_jobs.atom');
+		
+		$xml = new SimpleXMLElement( $xml );
+		
+		//echo $xml->entry[0]->title;
+		
+		//var_dump( $xml );
+		
+		//var_dump( $xml->entry[0]->title );
+		
+		//$xml= simplexml_load_string( $xml ) or die("Error: Cannot create object");
+		
+		//$jobs = array();
+		
+		foreach( $xml->entry as $job ){
+			
+			$id = strip_tags( $job->id->asXML() );
+			
+			$jobs[ $id ]['title'] = strip_tags($job->title->asXML());
+			
+			$jobs[ $id ]['desc'] = strip_tags($job->content->asXML());
+			
+			$author = $job->author;
+			
+			$jobs[ $id ]['dept'] = strip_tags($author->name->asXML());
+			
+		} // end foreach
 		
 		$jobs_posts = array();
 		
@@ -90,6 +128,16 @@ class CWP_Jobs extends CWP_Post_Type {
 					
 					$jobs_posts[ $id[0] ] = $the_query->post;
 					
+					$area = get_post_meta( $the_query->post->ID , '_area' , true );
+					
+					if( get_term_by( 'name' , trim( $area ) , 'jobarea' ) && $the_query->post->post_status != 'publish' ){
+						
+						wp_publish_post( $the_query->post->ID );
+						
+						echo '<li>Updated: ' . get_the_title() . '</li>';
+						
+					} // end if
+					
 				}
 				
 			} // end while
@@ -98,21 +146,34 @@ class CWP_Jobs extends CWP_Post_Type {
 		
 		if ( empty( $_GET['clear'] ) ){
 		
-			$html = $this->get_html();
+			//$html = $this->get_html();
 			
-			$listings_html = $this->get_listings_html_array( $html );
+			//$listings_html = $this->get_listings_html_array( $html );
 			
-			$jobs = $this->get_jobs_array( $listings_html[0] );
+			//$jobs = $this->get_jobs_array( $listings_html[0] );
 			
-			wp_reset_postdata();
+			
+			
+			if( isset( $_GET['start'] ) ) { 
+			
+				$start = sanitize_text_field( $_GET['start'] );
+			
+				$end = $start + 10;
+				
+			} // end if
 			
 			$i = 0;
 			
 			foreach( $jobs as $job_id => $job ){
 				
-				if ( $i  > 10 ) continue;
+				if( isset( $_GET['start'] ) ){
+				
+					if ( $i < $start ||  $i > $end ) { $i++; continue; }
+				
+				} // end if
 				
 				$i++;
+				
 				
 				if ( array_key_exists( $job_id , $jobs_posts ) ){
 					
@@ -120,24 +181,43 @@ class CWP_Jobs extends CWP_Post_Type {
 					
 				} else {
 					
+					$job_html = file_get_contents( 'http://www.wsujobs.com/postings/' . $job_id );
+					
+					$area = $this->get_job_area( $job_html );
+					
+					$type = $this->get_job_type( $job_html );
+					
+					$location = $this->get_job_location( $job_html );
+					
 					$post = array(
 						'post_name'     => $job_id,
 						'post_title'    => $job['title'],
 						'post_excerpt'  => $job['desc'],
+						'post_content'  => $job['desc'],
 						'post_type'     => 'job',
 					);
 					
-					if( get_term_by( 'name' , trim( $job['dept'] ) , 'category' ) ){
+					if( get_term_by( 'name' , trim( $area ) , 'jobarea' ) ){
 						
 						$post['post_status'] = 'publish';
 						
 					} // end if
 					
-					$post_id = wp_insert_post ( $post );
+					$post_id = wp_insert_post( $post );
 					
 					update_post_meta( $post_id , '_redirect' , 'https://www.wsujobs.com/postings/' . $job_id );
 					
 					update_post_meta( $post_id , '_dept' , trim( $job['dept'] ) );
+					
+					update_post_meta( $post_id , '_area' , trim( $area ) );
+					
+					update_post_meta( $post_id , '_type' , trim( $type ) );
+					
+					update_post_meta( $post_id , '_location' , trim( $location ) );
+					
+					wp_set_object_terms( $post_id, $type, 'jobtype' );
+					
+					wp_set_object_terms( $post_id, $job['dept'], 'jobdept' );
 					
 					echo '<li>Added: ' . $job['title'] . '</li>';
 					
@@ -147,15 +227,21 @@ class CWP_Jobs extends CWP_Post_Type {
 			
 			echo '<hr />';
 			
-			foreach( $jobs_posts as $j_post ){
-				
-				wp_delete_post( $j_post->ID, true );
-				
-				echo '<li>Removed: ' . $j_post->post_title . '</li>';
-				
+			if( ! isset( $_GET['start'] ) ) {
+			
+				foreach( $jobs_posts as $j_post ){
+					
+					wp_delete_post( $j_post->ID, false );
+					
+					echo '<li>Removed: ' . $j_post->post_title . '</li>';
+					
+				} // end foreach
+			
 			} // end foreach
 		
-		} // end if
+		} // end if*/
+		
+		wp_reset_postdata();
 		
 		//var_dump( $jobs );
 		
@@ -290,6 +376,58 @@ class CWP_Jobs extends CWP_Post_Type {
 		$pattern = '/<tr.*?>[\S\s]+?<td.*?job-title[\S\s]+?<td>[\S\s]+?<td>[\S\s]+?<td>([\S\s]+?)<\/td>/';
 		
 		$pattern = '/job-description.*?>([\S\s]+?)<\/span>/';
+		
+		preg_match( $pattern , $job , $match );
+		
+		return $match[1];
+		
+	} // end get_job_title
+	
+	
+	/**
+	 * Get job dept from html
+	 * @param string $job HTML for job
+	 * @return string 
+	 */
+	private function get_job_area( $job ){
+		
+		$match = array();
+		
+		$pattern = '/<th>College\/Area<\/th>[\S\s]+?<td>(.*?)<\/td>/';
+		
+		preg_match( $pattern , $job , $match );
+		
+		return $match[1];
+		
+	} // end get_job_title
+	
+	/**
+	 * Get job dept from html
+	 * @param string $job HTML for job
+	 * @return string 
+	 */
+	private function get_job_type( $job ){
+		
+		$match = array();
+		
+		$pattern = '/<th>Employee Type<\/th>[\S\s]+?<td>(.*?)<\/td>/';
+		
+		preg_match( $pattern , $job , $match );
+		
+		return $match[1];
+		
+	} // end get_job_title
+	
+	/**
+	 * Get job dept from html
+	 * @param string $job HTML for job
+	 * @return string 
+	 */
+	private function get_job_location( $job ){
+		
+		$match = array();
+		
+		$pattern = '/<th>Work Location<\/th>[\S\s]+?<td>(.*?)<\/td>/';
 		
 		preg_match( $pattern , $job , $match );
 		

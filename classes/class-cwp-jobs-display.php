@@ -12,11 +12,15 @@ class CWP_Jobs_Display {
 		
 			$html .= $this->the_nav( $feed );
 			
-			$html .= $this->the_list( $feed , array() , 'cahnrs-faculty-jobs active' );
+			$faculty_jobs = $this->get_cahnrs_jobs();
 			
-			$html .= $this->the_list( $feed , array() , 'cahnrs-staff-jobs' );
+			$staff_jobs = $this->get_cahnrs_jobs( 'NOT IN' );
 			
-			$html .= $this->the_list( $feed , array() , 'cahnrs-student-jobs' );
+			$html .= $this->the_list( $faculty_jobs, 'cahnrs-faculty-jobs active' );
+			
+			$html .= $this->the_list( $staff_jobs , 'cahnrs-staff-jobs' );
+			
+			$html .= $this->get_students_section();
 			
 			$html .= $this->get_script();
 		
@@ -48,9 +52,97 @@ class CWP_Jobs_Display {
 		
 	} // end the_nav
 	
-	protected function the_list( $feed , $filters = array() , $class = '' ){
+	protected function get_cahnrs_jobs( $operator = 'IN'){
 		
-		$feed = $this->apply_filters( $feed , $filters );
+		$args = array(
+			'post_type' => 'job',
+			'posts_per_page' => -1,
+			'tax_query' => array(
+				array(
+					'taxonomy' => 'jobtype',
+					'field'    => 'slug',
+					'terms'    => 'faculty',
+					'operator' => $operator,
+				),
+			),
+		);
+		
+		$query = new WP_Query( $args );
+		
+		$jobs = array();
+		
+		if ( $query->have_posts() ) {
+		
+			while ( $query->have_posts() ) {
+				
+				$query->the_post();
+				
+				$jobs[ $query->post->post_name ]['title'] =  get_the_title();
+				
+				$jobs[ $query->post->post_name ]['link'] =  'http://www.wsujobs.com/postings/' . $query->post->post_name;
+				
+				$jobs[ $query->post->post_name ]['content'] = get_the_content();
+				
+				$jobs[ $query->post->post_name ]['excerpt'] =  get_the_excerpt();
+				
+				$jobs[ $query->post->post_name ]['dept'] = get_post_meta( $query->post->ID , '_dept' , true );
+				
+				$jobs[ $query->post->post_name ]['location'] = get_post_meta( $query->post->ID , '_location' , true );
+				
+			}
+			
+		} 
+		/* Restore original Post Data */
+		wp_reset_postdata();
+		
+		return $jobs;
+		
+	}
+	
+	protected function get_students_section(){
+		
+		$html = '<div class="cahnrs-jobs-feed cahnrs-student-jobs">';
+		
+		$args = array(
+			'post_type' => 'post',
+			'posts_per_page' => 1,
+			'tax_query' => array(
+				array(
+					'taxonomy' => 'category',
+					'field'    => 'slug',
+					'terms'    => 'student-jobs',
+				),
+			),
+		);
+		
+		$query = new WP_Query( $args );
+		
+		$jobs = array();
+		
+		if ( $query->have_posts() ) {
+		
+			while ( $query->have_posts() ) {
+				
+				$query->the_post();
+				
+				$html .= '<h3>' . get_the_title() . '</h3>';
+				
+				$html .= do_shortcode( get_the_content() );
+				
+			} // end while
+			
+		} // end if
+		
+		/* Restore original Post Data */
+		wp_reset_postdata();
+		
+		$html .= '</div>';
+		
+		return $html;
+		
+	} // end 
+	
+	protected function the_list( $feed , $class = '' ){
 		
 		$html = '<ul class="cahnrs-jobs-feed ' . $class . '">';
 		
@@ -64,9 +156,9 @@ class CWP_Jobs_Display {
 				
 					$html .= '<h3>' . $link . $feed_item['title'] . '</a></h3>';
 					
-					$html .= '<h4>Department Here, Location Here</h4>';
+					$html .= '<h4>'. $feed_item['dept'] . ', '. $feed_item['location'] . '</h4>';
 					
-					$html .= wp_trim_words( $feed_item['content'], $num_words = 45, '...' );
+					$html .= wp_trim_words( $feed_item['excerpt'], $num_words = 45, '...' );
 					
 					$html .= '<a class="cahnrs-job-details" href="' . $feed_item['link'] . '" target="_blank" >' . 'View Details</a>';
 				
@@ -79,14 +171,6 @@ class CWP_Jobs_Display {
 		return $html;
 		
 	} // end list
-	
-	protected function apply_filters( $feed , $filters ){
-		
-		shuffle( $feed );
-		
-		return array_slice( $feed , 0 , 10 );
-		
-	} // end apply filters
 	
 	
 	protected function get_script(){
